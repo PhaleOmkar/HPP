@@ -12,8 +12,9 @@
 #include <cuda.h>
 #include <cuda_gl_interop.h>
 
-#define DIM 1024
+#define DIMX 1920
+#define DIMY 1080
 
-void MandelbrotSet(dim3, dim3, uchar4*, GLfloat, GLfloat );
+void gpuMandelbrotSet(dim3, dim3, uchar4*, GLdouble, GLdouble );
+void cpuMandelbrotSet(uchar4*, GLdouble, GLdouble );
 //void MandelbrotSet(dim3, dim3, uchar4*, int, int, int);
-__global__ void map(GLfloat num, GLfloat min, GLfloat max, GLfloat newMin, GLfloat newMax, GLfloat *ans);

@@ -31,12 +31,14 @@ HWND ghWnd = NULL;
 DWORD dwStyle;
 WINDOWPLACEMENT wpPrev = { sizeof(WINDOWPLACEMENT) };
 
-GLfloat gHeight, gWidth;
+bool bUpdate = true;
+GLdouble gHeight, gWidth;
 uchar4* devPtr;
-dim3 grids(DIM / 16, DIM / 16);
-dim3 threads(16, 16);
+dim3 grids(DIMX/32, DIMX / 32);
+dim3 threads(32, 32);
 
-GLfloat min = -2.5f, max = 2.5f;
+GLdouble min = -2.0, max = 3.0;
+bool bGPU = true;
 
 // Global function declaration
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -103,12 +105,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 	// create window
 	hwnd = CreateWindowEx(WS_EX_APPWINDOW,
 		szClassName,
-		TEXT("Dynamic India"),
+		TEXT("CUDA Mandelbrot Set"),
 		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
 		100,
 		100,
-		DIM,
-		DIM,
+		DIMX,
+		DIMY,
 		NULL,
 		NULL,
 		hInstance,
@@ -152,7 +154,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 	/* CUDA */
 	glGenBuffers(1, &bufferObj);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, bufferObj);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, DIM * DIM * 4, NULL, GL_DYNAMIC_DRAW_ARB);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, DIMX * DIMY * 4, NULL, GL_DYNAMIC_DRAW_ARB);
 
 	cudaGraphicsGLRegisterBuffer(&resource, bufferObj, cudaGraphicsMapFlagsNone);
 	
@@ -192,6 +194,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	void resize(int, int);
 	void uninitialize();
 
+	static GLdouble delta = 0.01;
+
 	// code
 	switch (iMsg)
 	{
@@ -217,24 +221,86 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
+		case 'G':
+			if (bGPU)
+				bGPU = false;
+			else
+				bGPU = true;
+			break;
+
+		case '0':
+			delta = 0.1;
+			break;
+
+		case '1':
+			delta = 0.01;
+			break;
+
+		case '2':
+			delta = 0.005;
+			break;
+
+		case '3':
+			delta = 0.001;
+			break;
+
+		case '4':
+			delta = 0.0005;
+			break;
+
+		case '5':
+			delta = 0.00001;
+			break;
+
+		case '6':
+			delta = 0.000001;
+			break;
+
+		case '7':
+			delta = 0.0000001;
+			break;
+
+		case '8':
+			delta = 0.00000001;
+			break;
+
+		case '9':
+			delta = 0.000000001;
+			break;
+
+
+
 		case VK_UP:
-			max /= 1.1;
-			min = -max;
+			max -= delta;
+			min += delta;
+
+			if (min > max)
+			{
+				max += delta;
+				min -= delta;
+				break;
+			}
+
+			bUpdate = true;
 			break;
 
 		case VK_DOWN:
-			max *= 1.1;
-			min = -max;
+			max += delta;
+			min -= delta;
+
+			bUpdate = true;
 			break;
 
 		case VK_LEFT:
-			max -= 0.1;
-			min -= 0.1;
+			max -= delta;
+			min -= delta;
+			bUpdate = true;
 			break;
 
 		case VK_RIGHT:
-			max += 0.1;
-			min += 0.1;
+			max += delta;
+			min += delta;
+			bUpdate = true;
 			break;
 
 		case VK_ESCAPE:
@@ -343,7 +409,7 @@ int initialize(void)
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// warm-up call to resize
-	resize(DIM, DIM);
+	resize(DIMX, DIMY);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -396,8 +462,8 @@ void uninitialize(void)
 
 void display(void)
 {
-	glDrawPixels(DIM, DIM, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
+	glDrawPixels(DIMX, DIMY, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	
 	SwapBuffers(ghDC);
 }
 
@@ -413,33 +479,37 @@ void resize(int width, int height)
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	gluPerspective(45.0, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+	gluPerspective(45.0, (GLdouble)width / (GLdouble)height, 0.1, 100.0);
 
 }
 
 void update(void)
 {
-	static float color = 1.0;
+	if (!bUpdate) return;
+		
+	if (bGPU)
+	{
+		size_t size;
 
-	size_t size;
+		cudaGraphicsMapResources(1, &resource, NULL);
+		cudaGraphicsResourceGetMappedPointer((void**)&devPtr, &size, resource);
 
-	cudaGraphicsMapResources(1, &resource, NULL);
-	cudaGraphicsResourceGetMappedPointer((void**)&devPtr, &size, resource);
+		gpuMandelbrotSet(grids, threads, devPtr, min, max);
 
-	//if(color > 3.0)
-	//	MandelbrotSet(grids, threads, devPtr, 1, 0, 0);
-	//else if(color > 2.0)
-	//	MandelbrotSet(grids, threads, devPtr, 0, 1, 0);
-	//else
-	//	MandelbrotSet(grids, threads, devPtr, 0, 0, 1);
-	
-	MandelbrotSet(grids, threads, devPtr, min, max);
+		cudaGraphicsUnmapResources(1, &resource, NULL);
 
-	cudaGraphicsUnmapResources(1, &resource, NULL);
-
-
-
-	color+= 0.001f;
-	if (color > 4.0)
-		color = 1.0;
+		bUpdate = false;
+	}
+	else
+	{
+		void *ptr = glMapNamedBuffer(bufferObj, GL_WRITE_ONLY_ARB);
+		cpuMandelbrotSet((uchar4 *)ptr, min, max);
+		glUnmapNamedBuffer(bufferObj);
+	}
 }
+
+GLfloat map(GLfloat num, GLfloat min, GLfloat max, GLfloat newMin, GLfloat newMax)
+{
+	return newMin + (num / (max - min) * (newMax - newMin));
+}
+
