@@ -12,8 +12,8 @@
 #include <cuda.h>
 #include <cuda_gl_interop.h>
 
-#define DIMX 1920
-#define DIMY 1080
+#define DIMX 3840
+#define DIMY 2160
 
 void gpuMandelbrotSet(dim3, dim3, uchar4*, GLdouble, GLdouble );
 void cpuMandelbrotSet(uchar4*, GLdouble, GLdouble );

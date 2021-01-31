@@ -16,14 +16,14 @@ __global__ void kernel(uchar4 *ptr, GLdouble min, GLdouble max)
 		a = min + ((GLdouble)x / DIMX * (max - min));
 		b = (min*(GLdouble)DIMY/ (GLdouble)DIMX) + ((GLdouble)y / DIMY * ((max*(GLdouble)DIMY / (GLdouble)DIMX) - (min*(GLdouble)DIMY / (GLdouble)DIMX)));
 
-		GLdouble ca = a;
-		GLdouble cb = b;
+		//GLdouble ca = a;
+		//GLdouble cb = b;
 
-		/*GLdouble ca = 0.36024;
-		GLdouble cb = -0.64131;
-*/
-		//GLdouble ca = 0.0;
-		//GLdouble cb = -0.8;
+		//GLdouble ca = 0.36024;
+		//GLdouble cb = -0.64131;
+
+		GLdouble ca = 0.0;
+		GLdouble cb = -0.8;
 
 		/* Check for divergence */
 		int iter = 0;
@@ -70,11 +70,11 @@ void cpuMandelbrotSet(uchar4* ptr, GLdouble min, GLdouble max)
 			a = min + ((GLdouble)x / DIMX * (max - min));
 			b = (min*(GLdouble)DIMY / (GLdouble)DIMX) + ((GLdouble)y / DIMY * ((max*(GLdouble)DIMY / (GLdouble)DIMX) - (min*(GLdouble)DIMY / (GLdouble)DIMX)));
 
-			GLdouble ca = a;
-			GLdouble cb = b;
+			//GLdouble ca = a;
+			//GLdouble cb = b;
 
-			/*GLdouble ca = 0.36024;
-			GLdouble cb = -0.64131;*/
+			GLdouble ca = 0.36024;
+			GLdouble cb = -0.64131;
 			
 			//GLdouble ca = 0.0;
 			//GLdouble cb = -0.8;
